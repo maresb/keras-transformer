@@ -184,10 +184,13 @@ class TransformerBlock(Layer):
             compression_window_size=compression_window_size,
             name='self_attention')
         self.norm1_layer = LayerNormalization(name='normalization1')
+        # Use this instead of lambda to avoid autograph issues
+        def identity(x):
+            return x
         self.dropout_layer = (
             Dropout(residual_dropout, name='dropout')
             if residual_dropout > 0
-            else lambda x: x)
+            else identity)
         self.norm2_layer = LayerNormalization(name='normalization2')
         self.transition_layer = TransformerTransition(
             name='transition', activation=activation)

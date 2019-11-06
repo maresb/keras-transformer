@@ -225,13 +225,10 @@ class _BaseMultiHeadAttention(Layer):
         if not self.use_masking:
             return dot_product
         # Comput block matrix by outer products of masks
-        expanded_mask = tf.expand_dims(mask, -1)
+        expanded_mask = tf.cast(tf.expand_dims(mask, -1), tf.float32)
         input_shape = tf.shape(dot_product)
-        attention_mask = tf.cast(
-            tf.expand_dims(
-                tf.matmul(expanded_mask, tf.transpose(expanded_mask)), 1),
-            tf.float32
-        )
+        attention_mask = tf.expand_dims(
+            tf.matmul(expanded_mask, expanded_mask, transpose_b=True), 1)
 
         # In order to mask all heads of an instance, reshape first so we can
         # use broadcasting, then reshape back
@@ -337,7 +334,7 @@ class MultiHeadSelfAttention(_BaseMultiHeadAttention):
         self.build_output_params(d_model)
         return super().build(input_shape)
 
-    def call(self, inputs, **kwargs):
+    def call(self, inputs, mask=None, **kwargs):
         if not tf.is_tensor(inputs):
             raise ValueError(
                 'The layer can be called only with one tensor as an argument')
@@ -359,7 +356,8 @@ class MultiHeadSelfAttention(_BaseMultiHeadAttention):
         #         (-1, seq_len, self.num_heads, d_model // self.num_heads))
         #     for i in range(3)]
         attention_out = self.attention(pre_q, pre_v, pre_k, None, d_model,
-                                       training=kwargs.get('training'))
+                                       training=kwargs.get('training'),
+                                       mask=mask)
         return attention_out
 
     def compute_output_shape(self, input_shape):
