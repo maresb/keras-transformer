@@ -90,7 +90,7 @@ class _BaseMultiHeadAttention(Layer):
                 f'of the attention heads {self.num_heads}')
 
     def attention(self, pre_q, pre_v, pre_k, out_seq_len: int, d_model: int,
-                  training=None):
+                  mask=None, training=None):
         """
         Calculates the output of the attention once the affine transformations
         of the inputs are done. Here's the shapes of the arguments:
@@ -177,8 +177,9 @@ class _BaseMultiHeadAttention(Layer):
                                     tf.stack(
                                         (-1, k_t_shape[-2], k_t_shape[-1]))
                                 )
-                            )
-                            / sqrt_d)),
+                            ) / sqrt_d,
+                            mask=mask
+                        )),
                     training=training),
                 K.reshape(
                     v,
@@ -206,7 +207,7 @@ class _BaseMultiHeadAttention(Layer):
                                     training=training)
         return attention_softmax
 
-    def mask_attention_if_needed(self, dot_product):
+    def mask_attention_if_needed(self, dot_product, mask=None):
         """
         Makes sure that (when enabled) each position
         (of a decoder's self-attention) cannot attend to subsequent positions.
@@ -217,19 +218,34 @@ class _BaseMultiHeadAttention(Layer):
         The method does nothing if masking is turned off.
         :param dot_product: scaled dot-product of Q and K after reshaping them
         to 3D tensors (batch * num_heads, rows, cols)
+        :param mask: Sequence mask to mask padding of shape (batch, max_seqlen)
+        should contain true for values which should be retained (similar to
+        output of tf.sequence_mask)
         """
         if not self.use_masking:
             return dot_product
-        last_dims = K.int_shape(dot_product)[-2:]
-        # to ensure proper broadcasting
-        low_triangle_ones = (
-            np.tril(np.ones(last_dims)).reshape((1,) + last_dims))
-        inverse_low_triangle = 1 - low_triangle_ones
+        # Comput block matrix by outer products of masks
+        expanded_mask = tf.expand_dims(mask, -1)
+        input_shape = tf.shape(dot_product)
+        attention_mask = tf.cast(
+            tf.expand_dims(
+                tf.matmul(expanded_mask, tf.transpose(expanded_mask)), 1),
+            tf.float32
+        )
+
+        # In order to mask all heads of an instance, reshape first so we can
+        # use broadcasting, then reshape back
+        shape_with_attn_heads = tf.stack(
+            [-1, self.num_heads, input_shape[-2], input_shape[-1]])
+        input_reshaped = tf.reshape(dot_product, shape_with_attn_heads)
         close_to_negative_inf = -1e9
+        # Use elementary operations as tf.where cannot broadcast
         result = (
-            K.constant(low_triangle_ones, dtype=K.floatx()) * dot_product +
-            K.constant(close_to_negative_inf * inverse_low_triangle))
-        return result
+            attention_mask * input_reshaped
+            + (attention_mask - 1) * close_to_negative_inf
+        )
+
+        return tf.reshape(result, input_shape)
 
 
 class MultiHeadAttention(_BaseMultiHeadAttention):

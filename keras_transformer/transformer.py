@@ -194,8 +194,8 @@ class TransformerBlock(Layer):
         self.addition_layer = Add(name='add')
         self.vanilla_wiring = vanilla_wiring
 
-    def __call__(self, _input):
-        output = self.attention_layer(_input)
+    def __call__(self, _input, mask=None):
+        output = self.attention_layer(_input, mask=mask)
         post_residual1 = (
             self.addition_layer([_input, self.dropout_layer(output)])
             if self.vanilla_wiring
