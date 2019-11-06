@@ -135,7 +135,7 @@ class TransformerTransition(Layer):
         return result
 
 
-class TransformerBlock:
+class TransformerBlock(Layer):
     """
     A pseudo-layer combining together all nuts and bolts to assemble
     a complete section of both the Transformer and the Universal Transformer
@@ -168,25 +168,26 @@ class TransformerBlock:
     more reasonable. You can use classical Transformer's (2017) way of
     connecting the pieces by passing vanilla_wiring=True to the constructor.
     """
-    def __init__(self, name: str, num_heads: int,
+    def __init__(self, num_heads: int,
                  residual_dropout: float = 0, attention_dropout: float = 0,
                  activation: Optional[Union[str, Callable]] = 'gelu',
                  compression_window_size: int = None,
                  use_masking: bool = True,
-                 vanilla_wiring=False):
+                 vanilla_wiring=False, name='TransformerBlock'):
+        super().__init__()
         self.attention_layer = MultiHeadSelfAttention(
             num_heads, use_masking=use_masking, dropout=attention_dropout,
             compression_window_size=compression_window_size,
-            name=f'{name}_self_attention')
-        self.norm1_layer = LayerNormalization(name=f'{name}_normalization1')
+            name='self_attention')
+        self.norm1_layer = LayerNormalization(name='normalization1')
         self.dropout_layer = (
-            Dropout(residual_dropout, name=f'{name}_dropout')
+            Dropout(residual_dropout, name='dropout')
             if residual_dropout > 0
             else lambda x: x)
-        self.norm2_layer = LayerNormalization(name=f'{name}_normalization2')
+        self.norm2_layer = LayerNormalization(name='normalization2')
         self.transition_layer = TransformerTransition(
-            name=f'{name}_transition', activation=activation)
-        self.addition_layer = Add(name=f'{name}_add')
+            name='transition', activation=activation)
+        self.addition_layer = Add(name='add')
         self.vanilla_wiring = vanilla_wiring
 
     def __call__(self, _input):

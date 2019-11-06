@@ -290,7 +290,8 @@ class MultiHeadSelfAttention(_BaseMultiHeadAttention):
     # noinspection PyAttributeOutsideInit
     def build(self, input_shape):
         if not isinstance(input_shape, tuple):
-            raise ValueError('Invalid input')
+            input_shape = tuple(input_shape)
+            # raise ValueError('Invalid input')
         d_model = input_shape[-1]
         self.validate_model_dimensionality(d_model)
         # These weights are concatenated matrices W_q, W_k and W_v which
