@@ -1,7 +1,7 @@
 import numpy as np
 # noinspection PyPep8Naming
 from tensorflow.keras import backend as K
-from tensorflow.keras.engine import Layer
+from tensorflow.keras.layers import Layer
 from tensorflow.keras.utils import get_custom_objects
 
 

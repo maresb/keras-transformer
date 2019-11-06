@@ -6,7 +6,9 @@ Contains implementation of the Transformer model described in papers
 import math
 from typing import Union, Callable, Optional
 
-from tensorflow.keras.layers import Layer, Add, activations, Dropout
+from tensorflow.keras.layers import Layer, Add, Dropout
+from tensorflow.keras import activations
+
 from tensorflow.keras import initializers
 # noinspection PyPep8Naming
 from tensorflow.keras import backend as K
