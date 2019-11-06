@@ -6,6 +6,7 @@ Contains implementation of the Transformer model described in papers
 import math
 from typing import Union, Callable, Optional
 
+import tensorflow as tf
 from tensorflow.keras.layers import Layer, Add, Dropout
 from tensorflow.keras import activations
 
@@ -119,11 +120,11 @@ class TransformerTransition(Layer):
         return super().build(input_shape)
 
     def call(self, inputs, **kwargs):
-        input_shape = K.int_shape(inputs)
+        input_shape = tf.shape(inputs)
         d_model = input_shape[-1]
         step1 = self.activation(
             K.bias_add(
-                K.dot(K.reshape(inputs, (-1, d_model)),
+                K.dot(K.reshape(inputs, tf.stack((-1, d_model))),
                       self.weights1),
                 self.biases1,
                 data_format='channels_last'))
@@ -131,7 +132,10 @@ class TransformerTransition(Layer):
             K.dot(step1, self.weights2),
             self.biases2,
             data_format='channels_last')
-        result = K.reshape(step2, (-1,) + input_shape[-2:])
+        result = K.reshape(
+            step2,
+            tf.stack((-1, input_shape[-2], input_shape[-1]))
+        )
         return result
 
 

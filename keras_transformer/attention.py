@@ -1,5 +1,6 @@
 import numpy as np
 # noinspection PyPep8Naming
+import tensorflow as tf
 from tensorflow.keras import backend as K
 from tensorflow.keras.layers import Layer
 from tensorflow.keras.utils import get_custom_objects
@@ -155,9 +156,9 @@ class _BaseMultiHeadAttention(Layer):
         # for further matrix multiplication
         sqrt_d = K.constant(np.sqrt(d_model // self.num_heads),
                             dtype=K.floatx())
-        q_shape = K.int_shape(q)
-        k_t_shape = K.int_shape(k_transposed)
-        v_shape = K.int_shape(v)
+        q_shape = tf.shape(q)
+        k_t_shape = tf.shape(k_transposed)
+        v_shape = tf.shape(v)
         # before performing batch_dot all tensors are being converted to 3D
         # shape (batch_size * num_heads, rows, cols) to make sure batch_dot
         # performs identically on all backends
@@ -167,19 +168,33 @@ class _BaseMultiHeadAttention(Layer):
                     K.softmax(
                         self.mask_attention_if_needed(
                             K.batch_dot(
-                                K.reshape(q, (-1,) + q_shape[-2:]),
-                                K.reshape(k_transposed,
-                                          (-1,) + k_t_shape[-2:]))
+                                K.reshape(
+                                    q,
+                                    tf.stack((-1, q_shape[-2], q_shape[-1]))
+                                ),
+                                K.reshape(
+                                    k_transposed,
+                                    tf.stack(
+                                        (-1, k_t_shape[-2], k_t_shape[-1]))
+                                )
+                            )
                             / sqrt_d)),
                     training=training),
-                K.reshape(v, (-1,) + v_shape[-2:])),
-            (-1, self.num_heads, q_shape[-2], v_shape[-1]))
+                K.reshape(
+                    v,
+                    tf.stack((-1, v_shape[-2], v_shape[-1]))
+                )),
+            tf.stack((-1, self.num_heads, q_shape[-2], v_shape[-1])))
         attention_heads_merged = K.reshape(
             K.permute_dimensions(attention_heads, [0, 2, 1, 3]),
             (-1, d_model))
+        if out_seq_len is None:
+            output_shape = tf.stack([-1, tf.shape(pre_k)[1], d_model])
+        else:
+            output_shape = (-1, out_seq_len, d_model)
         attention_out = K.reshape(
             K.dot(attention_heads_merged, self.output_weights),
-            (-1, out_seq_len, d_model))
+            output_shape)
         return attention_out
 
     def apply_dropout_if_needed(self, attention_softmax, training=None):
@@ -206,10 +221,9 @@ class _BaseMultiHeadAttention(Layer):
         if not self.use_masking:
             return dot_product
         last_dims = K.int_shape(dot_product)[-2:]
+        # to ensure proper broadcasting
         low_triangle_ones = (
-            np.tril(np.ones(last_dims))
-            # to ensure proper broadcasting
-            .reshape((1,) + last_dims))
+            np.tril(np.ones(last_dims)).reshape((1,) + last_dims))
         inverse_low_triangle = 1 - low_triangle_ones
         close_to_negative_inf = -1e9
         result = (
@@ -308,22 +322,27 @@ class MultiHeadSelfAttention(_BaseMultiHeadAttention):
         return super().build(input_shape)
 
     def call(self, inputs, **kwargs):
-        if not K.is_tensor(inputs):
+        if not tf.is_tensor(inputs):
             raise ValueError(
                 'The layer can be called only with one tensor as an argument')
-        _, seq_len, d_model = K.int_shape(inputs)
+        d_model = K.int_shape(inputs)[-1]
+        input_shape = tf.shape(inputs)
         # The first thing we need to do is to perform affine transformations
         # of the inputs to get the Queries, the Keys and the Values.
         qkv = K.dot(K.reshape(inputs, [-1, d_model]), self.qkv_weights)
+        qkv_shape = tf.stack(
+            [-1, input_shape[1], self.num_heads, d_model // self.num_heads])
         # splitting the keys, the values and the queries before further
         # processing
         pre_q, pre_k, pre_v = [
-            K.reshape(
-                # K.slice(qkv, (0, i * d_model), (-1, d_model)),
-                qkv[:, i * d_model:(i + 1) * d_model],
-                (-1, seq_len, self.num_heads, d_model // self.num_heads))
-            for i in range(3)]
-        attention_out = self.attention(pre_q, pre_v, pre_k, seq_len, d_model,
+            tf.reshape(el, qkv_shape) for el in tf.split(qkv, 3, axis=-1)]
+        # pre_q, pre_k, pre_v = [
+        #     K.reshape(
+        #         # K.slice(qkv, (0, i * d_model), (-1, d_model)),
+        #         qkv[:, i * d_model:(i + 1) * d_model],
+        #         (-1, seq_len, self.num_heads, d_model // self.num_heads))
+        #     for i in range(3)]
+        attention_out = self.attention(pre_q, pre_v, pre_k, None, d_model,
                                        training=kwargs.get('training'))
         return attention_out
 
