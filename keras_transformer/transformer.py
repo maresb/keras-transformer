@@ -6,11 +6,11 @@ Contains implementation of the Transformer model described in papers
 import math
 from typing import Union, Callable, Optional
 
-from keras.layers import Layer, Add, activations, Dropout
-from keras import initializers
+from tensorflow.keras.layers import Layer, Add, activations, Dropout
+from tensorflow.keras import initializers
 # noinspection PyPep8Naming
-from keras import backend as K
-from keras.utils import get_custom_objects
+from tensorflow.keras import backend as K
+from tensorflow.keras.utils import get_custom_objects
 
 from keras_transformer.attention import MultiHeadSelfAttention
 

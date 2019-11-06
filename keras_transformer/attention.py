@@ -1,8 +1,8 @@
 import numpy as np
 # noinspection PyPep8Naming
-from keras import backend as K
-from keras.engine import Layer
-from keras.utils import get_custom_objects
+from tensorflow.keras import backend as K
+from tensorflow.keras.engine import Layer
+from tensorflow.keras.utils import get_custom_objects
 
 
 class _BaseMultiHeadAttention(Layer):

@@ -4,12 +4,12 @@ useful in building models with it.
 """
 import math
 
-from keras import activations, regularizers
+from tensorflow.keras import activations, regularizers
 # noinspection PyPep8Naming
-from keras import backend as K
-from keras.engine import Layer
-from keras.layers import Embedding
-from keras.utils import get_custom_objects
+from tensorflow.keras import backend as K
+from tensorflow.keras.engine import Layer
+from tensorflow.keras.layers import Embedding
+from tensorflow.keras.utils import get_custom_objects
 
 
 class ReusableEmbedding(Embedding):
