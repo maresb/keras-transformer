@@ -30,7 +30,7 @@ setup(
     keywords='development',
 
     packages=find_packages(where='.', exclude=['example']),
-    install_requires=['tensorflow==1.15.0', 'numpy'],
+    install_requires=['tensorflow>=1.15.0', 'numpy'],
     tests_require=['pytest'],
     include_package_data=True,
 )
