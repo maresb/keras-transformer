@@ -222,8 +222,7 @@ class _BaseMultiHeadAttention(Layer):
         should contain true for values which should be retained (similar to
         output of tf.sequence_mask)
         """
-        if not self.use_masking:
-            return dot_product
+        # Always mask invalid values
         # Comput block matrix by outer products of masks
         expanded_mask = tf.cast(tf.expand_dims(mask, -1), tf.float32)
         input_shape = tf.shape(dot_product)
@@ -236,12 +235,22 @@ class _BaseMultiHeadAttention(Layer):
             [-1, self.num_heads, input_shape[-2], input_shape[-1]])
         input_reshaped = tf.reshape(dot_product, shape_with_attn_heads)
         close_to_negative_inf = -1e9
+
+        if self.use_masking:
+            # If use_masking=True additionally mask future values from
+            # attention.
+            last_dims = tf.shape(dot_product)[-2:]
+            # to ensure proper broadcasting
+            low_triangle_ones = tf.linalg.band_part(
+                tf.ones(last_dims, dtype=tf.float32), -1, 0)
+            low_triangle_ones = tf.expand_dims(low_triangle_ones, 0)
+            attention_mask = attention_mask * low_triangle_ones
+
         # Use elementary operations as tf.where cannot broadcast
         result = (
             attention_mask * input_reshaped
             + (attention_mask - 1) * close_to_negative_inf
         )
-
         return tf.reshape(result, input_shape)
 
 
