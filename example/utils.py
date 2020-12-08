@@ -46,9 +46,9 @@ def contain_tf_gpu_mem_usage():
         pass
     else:
         from keras.backend.tensorflow_backend import set_session
-        config = tf.ConfigProto()
+        config = tf.compat.v1.ConfigProto()
         config.gpu_options.allow_growth = True  # dynamically grow the memory
-        sess = tf.Session(config=config)
+        sess = tf.compat.v1.Session(config=config)
         set_session(sess)
 
 

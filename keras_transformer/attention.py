@@ -156,9 +156,9 @@ class _BaseMultiHeadAttention(Layer):
         # for further matrix multiplication
         sqrt_d = K.constant(np.sqrt(d_model // self.num_heads),
                             dtype=K.floatx())
-        q_shape = tf.shape(q)
-        k_t_shape = tf.shape(k_transposed)
-        v_shape = tf.shape(v)
+        q_shape = tf.shape(input=q)
+        k_t_shape = tf.shape(input=k_transposed)
+        v_shape = tf.shape(input=v)
         # before performing batch_dot all tensors are being converted to 3D
         # shape (batch_size * num_heads, rows, cols) to make sure batch_dot
         # performs identically on all backends
@@ -190,7 +190,7 @@ class _BaseMultiHeadAttention(Layer):
             K.permute_dimensions(attention_heads, [0, 2, 1, 3]),
             (-1, d_model))
         if out_seq_len is None:
-            output_shape = tf.stack([-1, tf.shape(pre_k)[1], d_model])
+            output_shape = tf.stack([-1, tf.shape(input=pre_k)[1], d_model])
         else:
             output_shape = (-1, out_seq_len, d_model)
         attention_out = K.reshape(
@@ -225,7 +225,7 @@ class _BaseMultiHeadAttention(Layer):
         # Always mask invalid values
         # Comput block matrix by outer products of masks
         expanded_mask = tf.cast(tf.expand_dims(mask, -1), tf.float32)
-        input_shape = tf.shape(dot_product)
+        input_shape = tf.shape(input=dot_product)
         attention_mask = tf.expand_dims(
             tf.matmul(expanded_mask, expanded_mask, transpose_b=True), 1)
 
@@ -239,7 +239,7 @@ class _BaseMultiHeadAttention(Layer):
         if self.use_masking:
             # If use_masking=True additionally mask future values from
             # attention.
-            last_dims = tf.shape(dot_product)[-2:]
+            last_dims = tf.shape(input=dot_product)[-2:]
             # to ensure proper broadcasting
             low_triangle_ones = tf.linalg.band_part(
                 tf.ones(last_dims, dtype=tf.float32), -1, 0)
@@ -348,7 +348,7 @@ class MultiHeadSelfAttention(_BaseMultiHeadAttention):
             raise ValueError(
                 'The layer can be called only with one tensor as an argument')
         d_model = K.int_shape(inputs)[-1]
-        input_shape = tf.shape(inputs)
+        input_shape = tf.shape(input=inputs)
         # The first thing we need to do is to perform affine transformations
         # of the inputs to get the Queries, the Keys and the Values.
         qkv = K.dot(K.reshape(inputs, [-1, d_model]), self.qkv_weights)

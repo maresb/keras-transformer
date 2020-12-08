@@ -120,7 +120,7 @@ class TransformerTransition(Layer):
         return super().build(input_shape)
 
     def call(self, inputs, **kwargs):
-        input_shape = tf.shape(inputs)
+        input_shape = tf.shape(input=inputs)
         d_model = input_shape[-1]
         step1 = self.activation(
             K.bias_add(
